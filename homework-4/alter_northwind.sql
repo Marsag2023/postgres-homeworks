@@ -26,3 +26,26 @@ DELETE FROM order_details WHERE product_id NOT IN (SELECT product_id FROM produc
 DELETE FROM orders WHERE order_id NOT IN (SELECT order_id FROM order_details);
 ALTER TABLE order_details ADD CONSTRAINT fk_order_details_products
 FOREIGN KEY(product_id) REFERENCES products(product_id);
+
+-- Создаем временную таблицу для хранения идентификаторов товаров, которые нужно удалить
+CREATE TEMPORARY TABLE temp_deleted_products AS
+SELECT  FROM products WHERE discontinued = 1;
+
+-- Обновляем ключ в таблице order_details до временной таблицы
+ALTER TABLE order_details DROP CONSTRAINT fk_order_details_products;
+
+UPDATE order_details
+SET product_id = NULL
+WHERE product_id IN (SELECT product_id FROM temp_deleted_products);
+
+-- Удаляем товары из таблицы products
+DELETE FROM products
+WHERE product_id IN (SELECT product_id FROM temp_deleted_products);
+
+-- Восстанавливаем первоначальный внешний ключ в таблице order_details
+ALTER TABLE order_details
+ADD CONSTRAINT fk_order_details_products
+FOREIGN KEY (product_id) REFERENCES products(product_id);
+
+-- Удаляем временную таблицу
+DROP TABLE temp_deleted_products;
